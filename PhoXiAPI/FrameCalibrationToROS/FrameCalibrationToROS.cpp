@@ -173,7 +173,7 @@ void printDistortionCoefficients(const std::vector<double> &distCoeffs)
       }
 
     std::cout << "distortion_model: plumb_bob" << std::endl;
-    std::cout << "distortion_coefficents: " << std::endl
+    std::cout << "distortion_coefficients: " << std::endl
               << "  rows: 1" << std::endl
               << "  cols: "  << LAST_PLUMB_BOB_INDEX+1 << std::endl
               << "  data: [";
