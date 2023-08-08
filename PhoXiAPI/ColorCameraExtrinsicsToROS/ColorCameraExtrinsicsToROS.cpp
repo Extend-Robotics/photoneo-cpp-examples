@@ -27,13 +27,13 @@ void printDeviceInfo(const pho::api::PhoXiDeviceInformation &DeviceInfo);
 void printFrameCalibParams(pho::api::PPhoXi &PhoXiDevice);
 //Print out scanning volume information
 
-Eigen::Quaterniond rotationAxisToQuaternion(const pho::api::Point3_64f &X, const pho::api::Point3_64f &Y, const pho::api::Point3_64f &Z)
+Eigen::Quaterniond rotationAxesToQuaternion(const pho::api::Point3_64f &X, const pho::api::Point3_64f &Y, const pho::api::Point3_64f &Z)
 {
   Eigen::Matrix3d m;
   
   // We need to be careful about the order, as
   // Photoneo vectors form column major rotation matrix
-  // while Eigen::Matrix3f expects row-major
+  // while Eigen::Matrix3d expects row-major
   m << X.x, Y.x, Z.x,
        X.y, Y.y, Z.y,
        X.z, Y.z, Z.z;
@@ -41,16 +41,6 @@ Eigen::Quaterniond rotationAxisToQuaternion(const pho::api::Point3_64f &X, const
   Eigen::Quaterniond q(m);
 
   return q;
-}
-
-Eigen::Quaterniond eulerToQuaternion(double roll, double pitch, double yaw)
-{
-    Eigen::AngleAxisd rollAngle(roll, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitchAngle(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yawAngle(yaw, Eigen::Vector3d::UnitZ());
-
-    Eigen::Quaterniond q = yawAngle * pitchAngle * rollAngle;
-    return q;  
 }
 
 int main(int argc, char *argv[])
@@ -189,38 +179,20 @@ void printFrameCalibParams(pho::api::PPhoXi& PhoXiDevice)
     printVector("color camera Y axis", Frame->Info.ColorCameraYAxis);    
     printVector("color camera Z axis", Frame->Info.ColorCameraZAxis);        
 
-    Eigen::Quaterniond quaternion_optical = eulerToQuaternion(-M_PI / 2.0, 0.0, -M_PI / 2.0);
-    Eigen::Quaterniond Q = rotationAxisToQuaternion(Frame->Info.ColorCameraXAxis, Frame->Info.ColorCameraYAxis, Frame->Info.ColorCameraZAxis);
-    //Q = quaternion_optical * Q * quaternion_optical.inverse();
+    Eigen::Quaterniond Q = rotationAxesToQuaternion(Frame->Info.ColorCameraXAxis, Frame->Info.ColorCameraYAxis, Frame->Info.ColorCameraZAxis);
 
-
-    std::string parent = "color_camera_frame";
-    std::string child = "range_frame";
-
-    std::string parent_optical = "color_camera_optical_frame";
-    std::string child_optical = "range_optical_frame";
+    std::string parent_frame = "color_camera_optical_frame";
+    std::string child_frame = "range_optical_frame";
 
     int period_in_ms = 100;
 
     auto T = Frame->Info.ColorCameraPosition;
 
-    //ROS uses meteres, Photoneo uses mm
+    //ROS uses meters, Photoneo uses millimeters
     const double MM_TO_M = 0.001;
 
     std::cout << "rosrun tf static_transform_publisher "
               << T.x * MM_TO_M << " " << T.y * MM_TO_M << " " << T.z * MM_TO_M << " "
               << Q.x() << " " << Q.y() << " " << Q.z() << " " << Q.w() << " "
-              << child_optical << " " << parent_optical << " " << period_in_ms << std::endl; 
-
-/*              
-    std::cout << "rosrun tf static_transform_publisher "
-              << 0.0 << " " << 0.0 << " " << 0.0 << " "
-              << quaternion_optical.x() << " " << quaternion_optical.y() << " " << quaternion_optical.z() << " " << quaternion_optical.w() << " "
-              << child << " " << child_optical << " " << period_in_ms << std::endl; 
-
-    std::cout << "rosrun tf static_transform_publisher "
-              << 0.0 << " " << 0.0 << " " << 0.0 << " "
-              << quaternion_optical.x() << " " << quaternion_optical.y() << " " << quaternion_optical.z() << " " << quaternion_optical.w() << " "
-              << parent << " " << parent_optical << " " << period_in_ms << std::endl; 
-*/
+              << child_frame << " " << parent_frame << " " << period_in_ms << std::endl;
 }
