@@ -1,10 +1,12 @@
 /*
-* Photoneo's API Example - ColorCameraCalibrationToROS.cpp
-* Prints ColorCamera calibration parameters in ROS compatible yaml format.
-* This is calibration for raw RGB image respecting currently set resolution.
-* Note that this is different from device computed RGB texture.
+* Photoneo's API Example - ColorCameraExtrinsicsToROS.cpp
+* Prints ColorCamera/Range extrinsics in the form of ROS launchfile with static_transform_publisher.
+* Those are extrinsics between raw RGB image and depth.
 *
-* Modified from ExtendRobotics's FrameCalibrationToROS
+* Note that this is different from device computed RGB texture which is aligned to depth
+* and extrinsics would be identity in such case.
+*
+* Modified from ExtendRobotics's ColorCameraCalibrationToROS
 *
 * Mofification Contributors:
 * - Bartosz Meglicki <bartosz.meglicki@extendrobotics.com> (2023)
@@ -24,24 +26,7 @@ void printDeviceInfoList(const std::vector<pho::api::PhoXiDeviceInformation> &De
 //Print out device info to standard output
 void printDeviceInfo(const pho::api::PhoXiDeviceInformation &DeviceInfo);
 //Print out calibration parameters
-void printFrameCalibParams(pho::api::PPhoXi &PhoXiDevice);
-//Print out scanning volume information
-
-Eigen::Quaterniond rotationAxesToQuaternion(const pho::api::Point3_64f &X, const pho::api::Point3_64f &Y, const pho::api::Point3_64f &Z)
-{
-  Eigen::Matrix3d m;
-  
-  // We need to be careful about the order, as
-  // Photoneo vectors form column major rotation matrix
-  // while Eigen::Matrix3d expects row-major
-  m << X.x, Y.x, Z.x,
-       X.y, Y.y, Z.y,
-       X.z, Y.z, Z.z;
-
-  Eigen::Quaterniond q(m);
-
-  return q;
-}
+void printROSExtrinsics(pho::api::PPhoXi &PhoXiDevice);
 
 int main(int argc, char *argv[])
 {
@@ -61,6 +46,13 @@ int main(int argc, char *argv[])
         std::cerr << "PhoXi Factory has found 0 devices" << std::endl;
         return 0;
     }
+
+    //output ROS launchfile XML declaration
+    std::cout << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" << std::endl << std::endl;
+
+    //start XML comment keeping information how file was generated
+    std::cout << "<!--" << std::endl;
+
     printDeviceInfoList(DeviceList);
 
     //Try to connect device opened in PhoXi Control, if any
@@ -92,8 +84,8 @@ int main(int argc, char *argv[])
 
     std::cout << std::endl;
 
-    //Print out calibration parameters from the frame
-    printFrameCalibParams(PhoXiDevice);
+    //Print out ROS launchfile publishing tf2 extrinsics
+    printROSExtrinsics(PhoXiDevice);
 
     //Disconnect PhoXi device
     PhoXiDevice->Disconnect();
@@ -134,8 +126,23 @@ void printVector(const std::string &name, const pho::api::Point3_64f &vector)
         << std::endl;
 }
 
+Eigen::Quaterniond rotationAxesToQuaternion(const pho::api::Point3_64f &X, const pho::api::Point3_64f &Y, const pho::api::Point3_64f &Z)
+{
+  Eigen::Matrix3d m;
 
-void printFrameCalibParams(pho::api::PPhoXi& PhoXiDevice)
+  // We need to be careful about the order, as
+  // Photoneo vectors form column major rotation matrix
+  // while Eigen::Matrix3d expects row-major
+  m << X.x, Y.x, Z.x,
+       X.y, Y.y, Z.y,
+       X.z, Y.z, Z.z;
+
+  Eigen::Quaterniond q(m);
+
+  return q;
+}
+
+void printROSExtrinsics(pho::api::PPhoXi& PhoXiDevice)
 {
     if (!PhoXiDevice->isAcquiring())
     {
@@ -169,10 +176,16 @@ void printFrameCalibParams(pho::api::PPhoXi& PhoXiDevice)
 
     std::cout << "# ColorCameraImage (raw RGB, this is not depth aligned RGB texture!)" << std::endl;
     std::cout << "# ColorCameraScale: " << Frame->Info.ColorCameraScale.Width << "x" << Frame->Info.ColorCameraScale.Height << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "# 3D sensor should be [0,0,0] with identity rotation (frame of reference)" << std::endl;
+    std::cout << "# otherwise this tool will not generate correct extrinsics" << std::endl;
     printVector("3D sensor position", Frame->Info.SensorPosition);
     printVector("3D sensor X axis", Frame->Info.SensorXAxis);
     printVector("3D sensor Y axis", Frame->Info.SensorYAxis);    
-    printVector("3D sensor Z axis", Frame->Info.SensorZAxis);        
+    printVector("3D sensor Z axis", Frame->Info.SensorZAxis);
+
+    std::cout << std::endl;
 
     printVector("color camera position", Frame->Info.ColorCameraPosition);
     printVector("color camera X axis", Frame->Info.ColorCameraXAxis);
@@ -183,16 +196,26 @@ void printFrameCalibParams(pho::api::PPhoXi& PhoXiDevice)
 
     std::string parent_frame = "color_camera_optical_frame";
     std::string child_frame = "range_optical_frame";
-
-    int period_in_ms = 100;
+    std::string node_name = "range_color_camera_link_broadcaster";
 
     auto T = Frame->Info.ColorCameraPosition;
 
     //ROS uses meters, Photoneo uses millimeters
     const double MM_TO_M = 0.001;
 
-    std::cout << "rosrun tf static_transform_publisher "
+    //finish XML comment keeping information how file was generated
+    std::cout << "-->" << std::endl;
+
+    std::cout << "<launch>" << std::endl;
+
+    std::cout << "  <node pkg=\"tf2_ros\" "
+              <<         "type=\"static_transform_publisher\" "
+              <<         "name=\"" << node_name <<  "\" "
+              <<         "args=\""
               << T.x * MM_TO_M << " " << T.y * MM_TO_M << " " << T.z * MM_TO_M << " "
               << Q.x() << " " << Q.y() << " " << Q.z() << " " << Q.w() << " "
-              << child_frame << " " << parent_frame << " " << period_in_ms << std::endl;
+              << child_frame << " " << parent_frame
+              << "\" />" << std::endl;
+
+    std::cout << "</launch>" << std::endl;
 }
