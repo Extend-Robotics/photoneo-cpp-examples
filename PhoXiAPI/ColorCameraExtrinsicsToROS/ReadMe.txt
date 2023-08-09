@@ -30,7 +30,7 @@ How to use:
    2.1. Connect to a scanner
    2.2. Make sure `Structure->ColorCameraImage` transfer is enabled
 3. Run ColorCameraExtrinsicsToROS application and redirect output to launch file
-  3.1 e.g. `./ColorCameraExtrinsicsToROS > MyColorCameraRangeExtrinsics.yaml`
+  3.1 e.g. `./ColorCameraExtrinsicsToROS > MyColorCameraRangeExtrinsics.launch`
 
 The application will print out launchfile publishing ColorCamera/Range extrinsics of the connected scanner.
 If not connected to any scanner, it will automatically connect to the first
