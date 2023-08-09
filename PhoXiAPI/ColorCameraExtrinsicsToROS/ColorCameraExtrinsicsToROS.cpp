@@ -208,6 +208,7 @@ void printROSExtrinsics(pho::api::PPhoXi& PhoXiDevice)
 
     std::cout << "<launch>" << std::endl;
 
+    //static_transform_publisher for ColorCamera/Range
     std::cout << "  <node pkg=\"tf2_ros\" "
               <<         "type=\"static_transform_publisher\" "
               <<         "name=\"" << node_name <<  "\" "
