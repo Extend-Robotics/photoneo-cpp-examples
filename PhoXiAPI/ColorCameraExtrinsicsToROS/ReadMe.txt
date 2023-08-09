@@ -1,18 +1,22 @@
 ========================================================================
-    CONSOLE APPLICATION : ColorCameraCalibrationToROS Project Overview
+    CONSOLE APPLICATION : ColorCameraExtrinsicsToROS Project Overview
 ========================================================================
 
-This is a simple application that prints out ColorCamera ROS compatibe yaml frame calibration.
-This is calibration for raw RGB image respecting currently set color resolution.
-Note that this is different from device computed RGB texture.
+This is a simple application that prints ColorCamera/Range extrinsics
+in the form of ROS launchfile with static_transform_publisher.
+
+Those are extrinsics between raw RGB image and depth.
+
+Note that this is different from device computed RGB texture which is aligned to depth
+and extrinsics would be identity in such case.
 
 You will learn how to:
 
-* obtain ROS compatible ColorCamera calibration file
+* obtain ROS compatible launchfile publishing ColorCamera/Range extrinsics.
 
 How to build:
 
-1. Copy ColorCameraCalibrationToROS folder to a location with Read and Write
+1. Copy ColorCameraExtrinsicsToROS folder to a location with Read and Write
    permissions (using the name <source>)
 2. Open CMake
    2.1. Set Source code to <source>
@@ -25,11 +29,10 @@ How to use:
 2. Run PhoXiControl
    2.1. Connect to a scanner
    2.2. Make sure `Structure->ColorCameraImage` transfer is enabled
-   2.3. Make sure `ColorSettings->Resolution` is as desired
-3. Run ColorCameraCalibrationToROS application and redirect output to yaml file
-  3.1 e.g. `./ColorCameraCalibrationToROS > MyColorCalibration.yaml`
+3. Run ColorCameraExtrinsicsToROS application and redirect output to launch file
+  3.1 e.g. `./ColorCameraExtrinsicsToROS > MyColorCameraRangeExtrinsics.yaml`
 
-The application will print out frame level calibration params of ColorCamera of the connected scanner.
+The application will print out launchfile publishing ColorCamera/Range extrinsics of the connected scanner.
 If not connected to any scanner, it will automatically connect to the first
 in PhoXiControl.
 
